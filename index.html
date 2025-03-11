@@ -1,11 +1,181 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calgary Permits Explorer</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calgary Permits Explorer</title>
+  <!-- External CSS -->
+  <link rel="stylesheet" href="style.css">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <!-- MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+  <style>
+    /* Custom Popup Styling */
+    .popup-content {
+      font-family: 'Arial', sans-serif;
+      color: #333;
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 10px;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+      width: 250px;
+    }
+    .popup-content h4 {
+      margin: 0;
+      color: #007bff;
+      font-size: 16px;
+      text-align: center;
+    }
+    .popup-content .label {
+      font-weight: bold;
+      color: #555;
+    }
+    .popup-content .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .popup-content .info-table td, .popup-content .info-table th {
+      padding: 5px;
+      text-align: left;
+    }
+    .popup-content .info-table th {
+      background-color: #007bff;
+      color: white;
+    }
+    .popup-content .info-table tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+  </style>
 </head>
 <body>
-    <h1>Calgary Building Permits</h1>
+
+<div class="filter-container">
+  <h3>Date Filter</h3>
+  <form id="filter-form">
+    <div class="input-group">
+      <label for="start-date">Start Date</label>
+      <input type="date" id="start-date" required>
+    </div>
+    <div class="input-group">
+      <label for="end-date">End Date</label>
+      <input type="date" id="end-date" required>
+    </div>
+    <div class="button-group">
+      <button type="submit" id="filter-btn">Search</button>
+      <button type="button" id="reset-btn">Reset</button>
+    </div>
+  </form>
+</div>
+
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<!-- MarkerCluster JS -->
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+<script>
+  // Initialize the map
+  const mapInstance = L.map('map').setView([51.0617, -114.1015], 12);
+
+  // Add OpenStreetMap tile layer
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(mapInstance);
+
+  // Remove default markers
+
+  let permitsCluster;
+  let activeHighlight;
+  const apiBaseUrl = "https://data.calgary.ca/resource/c2es-76ed.geojson";
+
+  // Fetch permits data with optional date filtering
+  async function fetchPermits(start, end) {
+    // Remove previous clusters if they exist
+    if (permitsCluster) {
+      mapInstance.removeLayer(permitsCluster);
+    }
+    
+    // Build URL with query parameters if filtering is applied
+    const url = new URL(apiBaseUrl);
+    if (start && end) {
+      url.searchParams.append("$where", 
+        `issueddate >= '${start}T00:00:00' AND issueddate <= '${end}T23:59:59'`
+      );
+    }
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      permitsCluster = L.markerClusterGroup();
+
+      const geoLayer = L.geoJSON(data, {
+        pointToLayer: (feature, latlng) => {
+          const marker = L.marker(latlng);
+          const props = feature.properties || {};
+
+          // Create custom popup content with enhanced styling
+          const popupContent = `
+            <div class="popup-content">
+              <h4>Permit Details</h4>
+              <table class="info-table">
+                <tr>
+                  <th>Issued Date</th>
+                  <td>${props.issueddate || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <th>Work Class Group</th>
+                  <td>${props.workclassgroup || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <th>Contractor</th>
+                  <td>${props.contractorname || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <th>Community</th>
+                  <td>${props.communityname || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <th>Original Address</th>
+                  <td>${props.originaladdress || 'N/A'}</td>
+                </tr>
+              </table>
+            </div>
+          `;
+          marker.bindPopup(popupContent);
+          return marker;
+        }
+      });
+
+      permitsCluster.addLayer(geoLayer);
+      mapInstance.addLayer(permitsCluster);
+    } catch (err) {
+      console.error("Data fetching error:", err);
+    }
+  }
+
+  // Handle filter form submission
+  document.getElementById("filter-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const start = document.getElementById("start-date").value;
+    const end = document.getElementById("end-date").value;
+    fetchPermits(start, end);
+  });
+
+  // Reset button to clear filters and remove clusters
+  document.getElementById("reset-btn").addEventListener("click", () => {
+    document.getElementById("filter-form").reset();
+    if (permitsCluster) {
+      mapInstance.removeLayer(permitsCluster);
+    }
+  });
+
+</script>
+
 </body>
 </html>
