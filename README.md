@@ -33,9 +33,6 @@ To run this project locally, follow these steps:
 2. View Permit Details: Click on any of the permit markers on the map to see detailed information about that permit in a popup.
 3. Reset Filters: Press the "Reset" button to clear the date filters and view all available permits.
 
-**License**
-
-This project is created for academic purposes as part of the ENGO651 – Lab 3 Assignment.
 
 **Acknowledgements**
 
