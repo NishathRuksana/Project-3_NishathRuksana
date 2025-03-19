@@ -8,13 +8,12 @@
   <link rel="stylesheet" href="style.css">
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <!-- Mapbox CSS -->
+  <link href='https://api.mapbox.com/mapbox.js/v3.3.1/mapbox.css' rel='stylesheet' />
  
   <!-- MarkerCluster CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
- <!-- Mapbox CSS -->
- <link href='https://api.mapbox.com/mapbox.js/v3.3.1/mapbox.css' rel='stylesheet' />
-
 
   <style>
     /* Lab 3 CSS: Permits popup styling and filter form */
@@ -74,6 +73,9 @@
       cursor: pointer;
       border-radius: 5px;
       transition: background-color 0.3s ease;
+      margin-bottom: 5px;
+      display: block;
+      width: 100%;
     }
     .layer-toggle-container button:hover {
       background-color: #c82333;
@@ -106,9 +108,10 @@
   </form>
 </div>
 
-<!-- Lab 4: Mapbox Traffic Incidents Toggle Button -->
+<!-- Lab 4: Mapbox Traffic Incidents and Description Toggle Buttons -->
 <div class="layer-toggle-container">
-  <button id="toggleTrafficLayer">Toggle Traffic Incidents</button>
+  <button id="toggleTrafficLayer">Toggle Traffic Incidents By Quadrant</button>
+  <button id="toggleDescriptionLayer">Toggle Description Layer</button>
 </div>
 
 <div id="map"></div>
@@ -120,8 +123,6 @@
 <script src='https://api.mapbox.com/mapbox.js/v3.3.1/mapbox.js'></script>
 <!-- MarkerCluster JS -->
 <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-
-
 
 <script>
   /***********************
@@ -223,32 +224,45 @@
   /***********************
    * Lab 4: Mapbox Vector Tileset Integration
    ***********************/
-  // Replace these placeholders with your actual Mapbox account details:
+  // Replace with your actual Mapbox access token
   const mapboxAccessToken = 'pk.eyJ1IjoibmlzaGF0aHJ1a3NhbmEiLCJhIjoiY204ZmhjamZqMGNlZzJ4cHVyZ21kOTYxbCJ9.pIVn6KSkionIas7WlzmfMg';
-  // For example, if your style URL is like 'mapbox://styles/username/traffic-style',
-  // then set mapboxStyleId to 'username/traffic-style'
-  const mapboxStyleId = 'nishathruksana/cm8flx9kb00ya01rg1c9f51lc'; 
+  
+  // Configure Mapbox with your access token
+  L.mapbox.accessToken = mapboxAccessToken;
+  
+  // Create layers with mapbox.styleLayer instead of regular tilelayers
+  const trafficIncidentByQuadrant = L.mapbox.styleLayer('mapbox://styles/nishathruksana/cm8flx9kb00ya01rg1c9f51lc');
+  
+  // This is the problematic layer - fixed by using mapbox.styleLayer instead of tileLayer
+  const descriptionOfAccidentLayer = L.mapbox.styleLayer('mapbox://styles/nishathruksana/cm8gjnw8j012v01ssb8gb5rej');
 
-  // Create a new TileLayer for your Mapbox vector tileset (styled in Mapbox Studio)
-  const mapboxLayer = L.tileLayer(
-    'https://api.mapbox.com/styles/v1/' + mapboxStyleId + '/tiles/256/{z}/{x}/{y}?access_token=' + mapboxAccessToken, 
-    { attribution: '© Mapbox © OpenStreetMap' }
-  );
-
-  // Toggle the Mapbox Traffic Incidents layer on/off with a button
+  // Toggle buttons logic
   document.getElementById("toggleTrafficLayer").addEventListener("click", function() {
-    if (mapInstance.hasLayer(mapboxLayer)) {
-      mapInstance.removeLayer(mapboxLayer);
-      this.textContent = "Toggle Traffic Incidents";
+    if (mapInstance.hasLayer(trafficIncidentByQuadrant)) {
+      mapInstance.removeLayer(trafficIncidentByQuadrant);
+      this.textContent = "Toggle Traffic Incidents By Quadrant";
     } else {
-      mapInstance.addLayer(mapboxLayer);
+      mapInstance.addLayer(trafficIncidentByQuadrant);
       this.textContent = "Hide Traffic Incidents";
     }
   });
 
+  document.getElementById("toggleDescriptionLayer").addEventListener("click", function() {
+    if (mapInstance.hasLayer(descriptionOfAccidentLayer)) {
+      mapInstance.removeLayer(descriptionOfAccidentLayer);
+      this.textContent = "Toggle Description Layer";
+    } else {
+      mapInstance.addLayer(descriptionOfAccidentLayer);
+      this.textContent = "Hide Description Layer";
+    }
+  });
+
+  // Load initial permits data
+  fetchPermits();
+
   /***********************
    * (Optional) Additional map click functionality:
-   * Display a popup with coordinates when clicking on the map (as seen in your friend's reference code)
+   * Display a popup with coordinates when clicking on the map
    ***********************/
   mapInstance.on('click', function(e) {
     L.popup()
